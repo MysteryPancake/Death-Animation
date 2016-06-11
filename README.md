@@ -3,6 +3,6 @@
 
 The code in this repository is all part of a (sort-of) community project that simply adds death animations (similar to the ones from TF2) to Garry's Mod. In saying that, please feel free to add or change or steal whatever code you want from here to use for yourself.
 
-If you feel like pull requesting anything, I'll check if the code works and then I'll add it to the workshop addon, coming soon.
+If you feel like pull requesting anything, I'll check if the code works and then I'll add it to the workshop addon, [available here](http://steamcommunity.com/sharedfiles/filedetails/?id=701595427).
 
 ###Thanks!
