@@ -25,6 +25,7 @@ local function SetEntityStuff( ent1, ent2 ) -- transfer most of the set things o
 end
 
 local function TransferBones( base, ragdoll ) -- transfers the bones of one entity to a ragdoll's physics bones (modified version of some of RobotBoy655's code)
+	if !IsValid( base ) or !IsValid( ragdoll ) then return end
 	for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
 		local bone = ragdoll:GetPhysicsObjectNum( i )
 		if ( IsValid( bone ) ) then
