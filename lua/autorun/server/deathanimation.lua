@@ -45,13 +45,14 @@ hook.Add( 'PlayerDeath', 'DeathAnimation', function( victim, inflictor, attacker
 		victim:GetRagdollEntity():Remove()
 	end
 	
-	victim:Spectate( OBS_MODE_CHASE ) -- make them spectate
-	
 	local animent = ents.Create( 'base_gmodentity' ) -- the entity used for the death animation
 	SetEntityStuff( animent, victim )
 	animent:Spawn()
 	animent:Activate()
+	
+	victim:Spectate( OBS_MODE_CHASE ) -- make them spectate
 	victim:SpectateEntity( animent ) -- spectate this entity
+	
 	victim.Ragdoll = animent
 	
 	animent:SetSolid( SOLID_OBB ) -- this stuff isn't really needed, but just for physics
