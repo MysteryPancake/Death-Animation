@@ -1,8 +1,9 @@
 
-AddCSLuaFile( 'autorun/client/deathanimationsettings.lua' )
+AddCSLuaFile( 'autorun/client/deathanimationmenu.lua' )
 AddCSLuaFile( 'autorun/client/deathanimationconvars.lua' )
 
-local enabled = CreateConVar( 'deathanimation_enabled', '1', { FCVAR_REPLICATED, FCVAR_NOTIFY }, 'Sets whether a death animation should play when a player dies.' )
+local enabled = CreateConVar( 'deathanimation_enabled', '1', { FCVAR_REPLICATED, FCVAR_NOTIFY }, 'Sets whether the death animations are enabled.' )
+local onground = CreateConVar( 'deathanimation_onground', '0', { FCVAR_REPLICATED, FCVAR_NOTIFY }, 'Sets whether the death animations should only play when a player dies while on the ground.' )
 
 local function CheckForRandomAnim( cvar, ply ) -- Used to check if a convar is '%random_anim%', and also to verify a bit of other stuff
 
@@ -62,8 +63,12 @@ hook.Add( 'PlayerDeath', 'DeathAnimation', function( victim, inflictor, attacker
 	
 	if !IsValid( victim ) then return end -- We need a valid victim for this
 	
+	if onground:GetBool() then -- Don't do anything if they're not allowed to die off ground
+		if !victim:OnGround() then return end
+	end
+	
 	victim.LetRespawn = false -- Don't let them respawn
-		
+	
 	if IsValid( victim:GetRagdollEntity() ) then -- Remove the default ragdoll
 		victim:GetRagdollEntity():Remove()
 	end

@@ -32,10 +32,7 @@ local function GetGoodAnimationsAndDo( ent, func, tbl ) -- This is just used to 
 	
 end
 
-local function OpenMenuNoSort( pnl, pControlOpener ) -- This function is needed just so the DCheckBox won't get sorted
-	if ( pControlOpener ) then
-		if ( pControlOpener == pnl.TextEntry ) then return end
-	end
+local function OpenMenuNoSort( pnl ) -- This function is needed just so the DCheckBox won't get sorted
 	if ( #pnl.Choices == 0 ) then return end
 	if ( IsValid( pnl.Menu ) ) then
 		pnl.Menu:Remove()
@@ -87,6 +84,8 @@ hook.Add( 'PopulateToolMenu', 'DeathAnimationSettings', function()
 		if LocalPlayer():IsAdmin() then
 		
 			panel:CheckBox( 'Animations enabled', 'deathanimation_enabled' )
+			
+			panel:CheckBox( 'Animations only when killed on ground', 'deathanimation_onground' )
 			
 		end
 		
@@ -180,24 +179,19 @@ hook.Add( 'PopulateToolMenu', 'DeathAnimationSettings', function()
 			end
 		end
 		
-		bgpanel.ButtonBG = vgui.Create( 'DPanel', bgpanel )
-		bgpanel.ButtonBG:SetWide( 30 )
+		bgpanel.AddAnim = vgui.Create( 'DButton', bgpanel )
+		bgpanel.AddAnim:Dock( TOP )
+		bgpanel.AddAnim:SetFont( 'Trebuchet24' )
+		bgpanel.AddAnim:SetText( '<' )
+		bgpanel.AddAnim.Paint = PaintButton
 		
-		local pointmat = Material( 'gui/point.png')
+		bgpanel.RemoveAnim = vgui.Create( 'DButton', bgpanel )
+		bgpanel.RemoveAnim:Dock( BOTTOM )
+		bgpanel.RemoveAnim:SetFont( 'Trebuchet24' )
+		bgpanel.RemoveAnim:SetText( '>' )
+		bgpanel.RemoveAnim.Paint = PaintButton
 		
-		bgpanel.ButtonBG.AddAnim = vgui.Create( 'DButton', bgpanel )
-		bgpanel.ButtonBG.AddAnim:Dock( TOP )
-		bgpanel.ButtonBG.AddAnim:SetFont( 'Trebuchet24' )
-		bgpanel.ButtonBG.AddAnim:SetText( '<' )
-		bgpanel.ButtonBG.AddAnim.Paint = PaintButton
-		
-		bgpanel.ButtonBG.RemoveAnim = vgui.Create( 'DButton', bgpanel )
-		bgpanel.ButtonBG.RemoveAnim:Dock( BOTTOM )
-		bgpanel.ButtonBG.RemoveAnim:SetFont( 'Trebuchet24' )
-		bgpanel.ButtonBG.RemoveAnim:SetText( '>' )
-		bgpanel.ButtonBG.RemoveAnim.Paint = bgpanel.ButtonBG.AddAnim.Paint
-		
-		function bgpanel.ButtonBG.RemoveAnim:DoClick()
+		function bgpanel.RemoveAnim:DoClick()
 			local selectedlines = bgpanel.AnimationList:GetSelected()
 			for _, line in pairs( selectedlines ) do
 				bgpanel.NonAddedAnims:AddLine( line:GetValue( 1 ) )
@@ -205,7 +199,7 @@ hook.Add( 'PopulateToolMenu', 'DeathAnimationSettings', function()
 			end
 			UpdateRandomTblCvar( bgpanel.AnimationList )
 		end
-		function bgpanel.ButtonBG.AddAnim:DoClick()
+		function bgpanel.AddAnim:DoClick()
 			local selectedlines = bgpanel.NonAddedAnims:GetSelected()
 			for _, line in pairs( selectedlines ) do
 				bgpanel.AnimationList:AddLine( line:GetValue( 1 ) )
@@ -214,14 +208,9 @@ hook.Add( 'PopulateToolMenu', 'DeathAnimationSettings', function()
 			UpdateRandomTblCvar( bgpanel.AnimationList )
 		end
 		
-		function bgpanel.ButtonBG:PerformLayout( w, h )
+		function bgpanel:PerformLayout( w, h )
 			self.AddAnim:SetTall( h/2-10 )
 			self.RemoveAnim:SetTall( h/2-10 )
-		end
-		
-		function bgpanel:PerformLayout( w, h )
-			self.ButtonBG:SetTall( h )
-			self.ButtonBG:CenterHorizontal()
 			self.AnimationList:SetWide( w/2-25 )
 			self.NonAddedAnims:SetWide( w/2-25 )
 		end
