@@ -1,9 +1,11 @@
 
 AddCSLuaFile( 'autorun/client/deathanimationmenu.lua' )
-AddCSLuaFile( 'autorun/client/deathanimationconvars.lua' )
+AddCSLuaFile( 'autorun/client/cl_deathanimation.lua' )
 
 local enabled = CreateConVar( 'deathanimation_enabled', '1', { FCVAR_REPLICATED, FCVAR_NOTIFY }, 'Sets whether the death animations are enabled.' )
 local onground = CreateConVar( 'deathanimation_onground', '0', { FCVAR_REPLICATED, FCVAR_NOTIFY }, 'Sets whether the death animations should only play when a player dies while on the ground.' )
+
+util.AddNetworkString( 'DeathAnimation_RagColor' )
 
 local function CheckForRandomAnim( cvar, ply ) -- Used to check if a convar is '%random_anim%', and also to verify a bit of other stuff
 
@@ -23,10 +25,6 @@ local function CheckForRandomAnim( cvar, ply ) -- Used to check if a convar is '
 	
 end
 
-local function CheckAndRemoveRagdoll( ply ) -- Remove the player's ragdoll when they respawn or disconnect
-	if IsValid( ply.Ragdoll ) then ply.Ragdoll:Remove() end
-end
-
 local function SetEntityStuff( ent1, ent2 ) -- Transfer most of the set things on entity 2 to entity 1
 	if !IsValid( ent1 ) or !IsValid( ent2 ) then return false end
 	ent1:SetModel( ent2:GetModel() )
@@ -42,6 +40,15 @@ local function SetEntityStuff( ent1, ent2 ) -- Transfer most of the set things o
 		ent1:ManipulateBoneAngles( i, ent2:GetManipulateBoneAngles( i ) )
 		ent1:ManipulateBonePosition( i, ent2:GetManipulateBonePosition( i ) )
 		ent1:ManipulateBoneJiggle( i, ent2:GetManipulateBoneJiggle( i ) )
+	end
+end
+
+local function AllowBoneMovement( ragdoll, bool ) -- Changes whether ragdolls can move
+	for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
+	local bone = ragdoll:GetPhysicsObjectNum( i )
+		if ( IsValid( bone ) ) then
+			bone:EnableMotion( bool )
+		end
 	end
 end
 
@@ -73,25 +80,6 @@ hook.Add( 'PlayerDeath', 'DeathAnimation', function( victim, inflictor, attacker
 		victim:GetRagdollEntity():Remove()
 	end
 	
-	local animent = ents.Create( 'base_gmodentity' ) -- The entity used for the death animation
-	SetEntityStuff( animent, victim )
-	animent:Spawn()
-	animent:Activate()
-	
-	victim:Spectate( OBS_MODE_CHASE ) -- Make them spectate
-	victim:SpectateEntity( animent ) -- Spectate this entity
-	
-	victim.Ragdoll = animent
-	
-	animent:SetSolid( SOLID_OBB ) -- This stuff isn't really needed, but just for physics
-	animent:PhysicsInit( SOLID_OBB )
-	animent:SetMoveType( MOVETYPE_FLYGRAVITY )
-	animent:SetCollisionGroup( COLLISION_GROUP_DEBRIS )
-	local physobj = animent:GetPhysicsObject()
-	if IsValid( physobj ) then
-		physobj:Wake()
-	end
-
 	local seq = "death_0"..math.random( 1, 4 ) -- Just in case
 	
 	local hitgroup = victim:LastHitGroup()
@@ -105,23 +93,53 @@ hook.Add( 'PlayerDeath', 'DeathAnimation', function( victim, inflictor, attacker
 	else seq = CheckForRandomAnim( victim:GetInfo( 'deathanimation_generic' ), victim )
 	end
 	
-	animent:SetSequence( animent:LookupSequence( seq ) )
+	local animent = ents.Create( 'base_gmodentity' ) -- The entity used as a reference for the bone positioning
+	animent:SetModel( victim:GetModel() )
+	animent:SetPos( victim:GetPos() )
+	animent:SetAngles( victim:GetAngles() )
+	animent:Spawn()
+	animent:Activate()
+	animent:SetNoDraw( true ) -- The ragdoll is the thing getting seen
+	animent:SetSequence( animent:LookupSequence( seq ) ) -- If the sequence isn't valid, the sequence length is 0, so the timer takes care of things
 	animent:SetPlaybackRate( 1 )
 	animent.AutomaticFrameAdvance = true
+	
+	-- The animent's physics are disabled for now since I'm testing the best way to do it
+	--[[animent:SetSolid( SOLID_OBB ) -- This stuff isn't really needed, but just for physics
+	animent:PhysicsInit( SOLID_OBB )
+	animent:SetMoveType( MOVETYPE_FLYGRAVITY )
+	animent:SetCollisionGroup( COLLISION_GROUP_DEBRIS )
+	local physobj = animent:GetPhysicsObject()
+	if IsValid( physobj ) then
+		physobj:Wake()
+	end]]
+	
+	local rag = ents.Create( 'prop_ragdoll' )
+	SetEntityStuff( rag, victim )
+	rag:Spawn()
+	rag:Activate()
+	AllowBoneMovement( rag, false )
+	
+	rag.GetPlayerColor = victim.GetPlayerColor -- Set the color serverside
+	net.Start( 'DeathAnimation_RagColor' ) -- Set the color clientside
+		net.WriteEntity( rag )
+		net.WriteNormal( victim:GetPlayerColor() )
+	net.Broadcast()
+	
+	victim.Ragdoll = rag
+	
 	function animent:Think() -- This makes the animation work
+		TransferBones( animent, rag )
 		self:NextThink( CurTime() )
 		return true
 	end
 	
-	timer.Simple( animent:SequenceDuration( seq ), function() -- After the sequence is done, spawn the ragdoll
-		local rag = ents.Create( 'prop_ragdoll' )
-		SetEntityStuff( rag, animent )
-		rag:Spawn()
-		rag:Activate()
-		TransferBones( animent, rag )
+	victim:Spectate( OBS_MODE_CHASE ) -- Make them spectate
+	victim:SpectateEntity( rag ) -- Spectate this entity
+	
+	timer.Simple( animent:SequenceDuration( seq ), function() -- After the sequence is done, remove the animation reference
 		animent:Remove()
-		victim:SpectateEntity( rag ) -- Spectate the ragdoll now (this makes the screen jump over a bit though)
-		victim.Ragdoll = rag
+		AllowBoneMovement( rag, true )
 		victim.LetRespawn = true -- Let them respawn now
 	end )
 	
@@ -132,6 +150,10 @@ hook.Add( 'PlayerDeathThink', 'DeathAnimationThink', function( ply )
 		if !ply.LetRespawn then return false end -- Don't let the player respawn yet
 	end
 end )
+
+local function CheckAndRemoveRagdoll( ply ) -- Remove the player's ragdoll when they respawn or disconnect
+	if IsValid( ply.Ragdoll ) then ply.Ragdoll:Remove() end
+end
 
 hook.Add( 'PlayerSpawn', 'DeathAnimationRemoveRagdoll', CheckAndRemoveRagdoll )
 hook.Add( 'PlayerDisconnected', 'DeathAnimationRemoveRagdoll', CheckAndRemoveRagdoll )
