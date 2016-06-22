@@ -1,8 +1,8 @@
 
 local randomanims = GetConVar( 'deathanimation_random' )
 
-local BadBeginnings = { "g_", "p_", "e_", "b_", "bg_", "hg_", "tc_", "aim_", "turn", "gest_", "pose_", "auto_", "layer_", "posture", "bodyaccent", "a_" }
-local BadStrings = { "gesture", "posture", "_trans_", "_rot_", "gest", "aim", "bodyflex_", "delta", "ragdoll", "spine", "arms" } -- Copied from RobotBoy655's easy animation tool code
+local BadBeginnings = { "g_", "p_", "e_", "b_", "bg_", "hg_", "tc_", "aim_", "turn", "gest_", "pose_", "auto_", "layer_", "posture", "bodyaccent", "a_" } -- Copied from RobotBoy655
+local BadStrings = { "gesture", "posture", "_trans_", "_rot_", "gest", "aim", "bodyflex_", "delta", "ragdoll", "spine", "arms" } -- Copied from RobotBoy655
 
 local function GetGoodAnimationsAndDo( ent, func, tbl ) -- This is just used to run a function if a sequence is valid
 
@@ -82,16 +82,16 @@ hook.Add( 'PopulateToolMenu', 'DeathAnimationSettings', function()
 		panel:ClearControls()
 		
 		if LocalPlayer():IsAdmin() then
-		
 			panel:CheckBox( 'Animations enabled', 'deathanimation_enabled' )
-			
-			panel:CheckBox( 'Animations only when killed on ground', 'deathanimation_onground' )
-			
+			panel:CheckBox( "Don't remove ragdolls", 'deathanimation_keepragdolls' )
 		end
 		
+		panel:CheckBox( 'First-person death', 'deathanimation_firstperson' )
+		
 		local mdlpnl = vgui.Create( "DModelPanel" )
-		mdlpnl:SetModel( LocalPlayer():GetModel() )
-		mdlpnl.Entity.GetPlayerColor = function() return LocalPlayer():GetPlayerColor() end
+		local model = LocalPlayer():GetInfo( "cl_playermodel" )
+		mdlpnl:SetModel( util.IsValidRagdoll( model ) and model or LocalPlayer():GetModel() )
+		mdlpnl.Entity.GetPlayerColor = function() return Vector( LocalPlayer():GetInfo( 'cl_playercolor' ) ) end
 		mdlpnl:SetHeight( 300 )
 		function mdlpnl:LayoutEntity( ent ) -- Needed to make sure the entity is visible in the modelpanel, and to play the animation
 			local mn, mx = ent:GetRenderBounds()
@@ -108,23 +108,41 @@ hook.Add( 'PopulateToolMenu', 'DeathAnimationSettings', function()
 
 		panel:AddItem( mdlpnl )
 			
-		panel:Help( 'Animation to play when you get killed by:' )
+		panel:Help( 'Animation to play when you get killed:' )
 			
-		local comboboxes = {}
-		comboboxes[1] = panel:ComboBox( 'A head-shot:', 'deathanimation_headshot' )
-		comboboxes[2] = panel:ComboBox( 'A chest-shot:', 'deathanimation_chestshot' )
-		comboboxes[3] = panel:ComboBox( 'A stomach-shot:', 'deathanimation_stomachshot' )
-		comboboxes[4] = panel:ComboBox( 'A left-arm shot:', 'deathanimation_leftarm' )
-		comboboxes[5] = panel:ComboBox( 'A right-arm shot:', 'deathanimation_rightarm' )
-		comboboxes[6] = panel:ComboBox( 'A left-leg shot:', 'deathanimation_leftleg' )
-		comboboxes[7] = panel:ComboBox( 'A right-leg shot:', 'deathanimation_rightleg' )
-		comboboxes[8] = panel:ComboBox( 'Anything else:', 'deathanimation_generic' )
+		local comboboxes = {
+			{ panel:ComboBox( "By the 'kill' command:", 'deathanimation_kill' ) },
+			-- { panel:ComboBox( 'While off ground:', 'deathanimation_offground' ) }, -- Too general
+			{ panel:ComboBox( 'By burning:', 'deathanimation_fire' ) },
+			{ panel:ComboBox( 'By drowning:', 'deathanimation_drown' ) },
+			{ panel:ComboBox( 'By an explosion:', 'deathanimation_explosion' ) },
+			{ panel:ComboBox( 'By a head-shot:', 'deathanimation_headshot' ) },
+			{ panel:ComboBox( 'By a chest-shot:', 'deathanimation_chestshot' ) },
+			{ panel:ComboBox( 'By a stomach-shot:', 'deathanimation_stomachshot' ) },
+			{ panel:ComboBox( 'By a left-arm shot:', 'deathanimation_leftarm' ) },
+			{ panel:ComboBox( 'By a right-arm shot:', 'deathanimation_rightarm' ) },
+			{ panel:ComboBox( 'By a left-leg shot:', 'deathanimation_leftleg' ) },
+			{ panel:ComboBox( 'By a right-leg shot:', 'deathanimation_rightleg' ) },
+			{ panel:ComboBox( 'By anything else:', 'deathanimation_generic' ) }
+		}
 			
-		for _, box in ipairs( comboboxes ) do
-				
+		for _, tbl in ipairs( comboboxes ) do
+			
+			local box, lbl = tbl[1], tbl[2]
+			
+			local parent = lbl:GetParent()
+			
+			if IsValid( parent ) then
+				lbl:SetWrap( true )
+				lbl:SetAutoStretchVertical( true )
+				parent:SetTall(40)
+			end
+			
 			box.OpenMenu = OpenMenuNoSort
-				
-			box:AddChoice( 'Random animation from the list', '%random_anim%' )
+			
+			box:AddChoice( 'No animation (spawn ragdoll)', '%no_anim_ragdoll%' )
+			box:AddChoice( 'No animation (no ragdoll)', '%no_anim_norag%' )
+			box:AddChoice( 'Random animation from list', '%random_anim%' )
 			
 			local deathtbl = {}
 			for i = 1, 4 do
@@ -143,8 +161,9 @@ hook.Add( 'PopulateToolMenu', 'DeathAnimationSettings', function()
 				end
 				self:SetText( value )
 				self.selected = index
-				if value ~= 'Random animation from table' then mdlpnl.Entity:ResetSequence( value ) end
-				self:OnSelect( index, value, self.Data[ index ] )
+				local data = self.Data[ index ]
+				if ( data ~= '%random_anim%' and data ~= '%no_anim_norag%' and data ~= '%no_anim_ragdoll%' ) then mdlpnl.Entity:ResetSequence( value ) end
+				self:OnSelect( index, value, data )
 			end
 				
 		end
