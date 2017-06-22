@@ -1,4 +1,4 @@
-# Death animations for Garry's Mod
+# Garry's Mod Death Animations
 
 #### After 6 years since [the original thread](https://facepunch.com/showthread.php?t=943751), hopefully it's been worth the wait.
 
