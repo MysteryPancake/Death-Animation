@@ -6,4 +6,4 @@ The code in this repository is all part of a project that adds death animations 
 
 If you feel like pull requesting anything, I'll check if the code works and then I'll add it to the workshop addon, [available here](http://steamcommunity.com/sharedfiles/filedetails/?id=701595427).
 
-![Icon](http://i.imgur.com/q7bLBio.jpg)
+![Icon](icon.jpg?raw=true)
