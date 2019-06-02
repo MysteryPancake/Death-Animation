@@ -7,12 +7,12 @@ local onground = CreateConVar( 'deathanimation_onground', '0', { FCVAR_REPLICATE
 
 local function CheckForRandomAnim( cvar, ply ) -- Used to check if a convar is '%random_anim%', and also to verify a bit of other stuff
 
-	if !isstring( cvar ) or cvar == '' then return 'death_0'..math.random( 1, 4 ) end
+	if not isstring( cvar ) or cvar == '' then return 'death_0'..math.random( 1, 4 ) end
 	
 	if cvar == '%random_anim%' then
 		local anim = table.Random( string.Explode( ',', ply:GetInfo( 'deathanimation_random' ) ) )
 		
-		if !isstring( anim ) or anim == '' then
+		if not isstring( anim ) or anim == '' then
 			return 'death_0'..math.random( 1, 4 )
 		else
 			return anim
@@ -28,7 +28,7 @@ local function CheckAndRemoveRagdoll( ply ) -- Remove the player's ragdoll when 
 end
 
 local function SetEntityStuff( ent1, ent2 ) -- Transfer most of the set things on entity 2 to entity 1
-	if !IsValid( ent1 ) or !IsValid( ent2 ) then return false end
+	if not IsValid( ent1 ) or not IsValid( ent2 ) then return false end
 	ent1:SetModel( ent2:GetModel() )
 	ent1:SetPos( ent2:GetPos() )
 	ent1:SetAngles( ent2:GetAngles() )
@@ -46,7 +46,7 @@ local function SetEntityStuff( ent1, ent2 ) -- Transfer most of the set things o
 end
 
 local function TransferBones( base, ragdoll ) -- Transfers the bones of one entity to a ragdoll's physics bones (modified version of some of RobotBoy655's code)
-	if !IsValid( base ) or !IsValid( ragdoll ) then return end
+	if not IsValid( base ) or not IsValid( ragdoll ) then return end
 	for i = 0, ragdoll:GetPhysicsObjectCount() - 1 do
 		local bone = ragdoll:GetPhysicsObjectNum( i )
 		if ( IsValid( bone ) ) then
@@ -59,12 +59,12 @@ end
 
 hook.Add( 'PlayerDeath', 'DeathAnimation', function( victim, inflictor, attacker )
 
-	if !enabled:GetBool() then return end -- Don't do anything if the convar isn't enabled
+	if not enabled:GetBool() then return end -- Don't do anything if the convar isn't enabled
 	
-	if !IsValid( victim ) then return end -- We need a valid victim for this
+	if not IsValid( victim ) then return end -- We need a valid victim for this
 	
 	if onground:GetBool() then -- Don't do anything if they're not allowed to die off ground
-		if !victim:OnGround() then return end
+		if not victim:OnGround() then return end
 	end
 	
 	victim.LetRespawn = false -- Don't let them respawn
@@ -129,7 +129,7 @@ end )
 
 hook.Add( 'PlayerDeathThink', 'DeathAnimationThink', function( ply )
 	if enabled:GetBool() then -- Don't do anything if the convar is not enabled
-		if !ply.LetRespawn then return false end -- Don't let the player respawn yet
+		if not ply.LetRespawn then return false end -- Don't let the player respawn yet
 	end
 end )
 
